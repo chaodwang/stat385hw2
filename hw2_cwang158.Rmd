@@ -14,6 +14,8 @@ Keeping in line with our commitment to using versioning control, please:
 3. **Please commit every exercise as you complete them.**
 4. Provide a link to your GitHub repository to be awarded credit.
 
+![]
+
 ## (4 Points) Exercise 1 (It's a Mad, Mad, Mad, Mad Computational World)
 
 
@@ -26,10 +28,106 @@ Recall the different Sum of Squares, (*RSS*, *FSS*, *TSS*) formulations presente
    - Thus, you must "unvectorize" the computation. 
    - Call these functions: `compute_rss_loop`, `compute_fss_loop`, `compute_tss_loop`, and `tss_relationship_loop`.
 
+
+```{r}
+n = 1e4
+x = seq(0, 1, length.out = n)
+set.seed(123)
+y = runif(n)
+y_bar = mean(y)
+y_hat = lm(y~x)$fitted.values
+
+#rss loop
+compute_rss_loop = function(y, y_hat) {
+rss_element = rep(0, n)
+for (i in 1:n) {
+  rss_element[i] = (y[i] - y_hat[i])^2
+  }
+return(sum(rss_element))
+}
+
+#fss loop
+compute_fss_loop = function(y_hat, y_bar) {
+fss_element = rep(0, n)
+for (i in 1:n) {
+  fss_element[i] = (y_hat[i] - y_bar)^2
+  }
+return(sum(fss_element))
+}
+
+#tss loop
+compute_tss_loop = function(y, y_bar) {
+tss_element = rep(0, n)
+for (i in 1:n) {
+  tss_element[i] = (y[i] - y_bar)^2
+  }
+return(sum(tss_element))
+}
+
+tss_relationship_loop = function(y, y_hat, y_bar) {
+  rss = compute_rss_loop(y, y_hat)
+  fss = compute_fss_loop(y_hat, y_bar)
+  tss = rss + fss
+  return(tss)
+}
+
+```
+
+
 - Check that the looping functions are equivalent to the vectorized components via `all.equal()`. Does the equality change between functions if the `tolerance` parameter in `all.equal` changes? (e.g. from `1e-3` to `0`) **Why?**
     - Use the [Setup Function Call](http://stat385.thecoatlessprofessor.com/assets/lectures/lec5/lec5_functions_recursion_memoization_benchmarking.pdf#page=22) to generate data.
     - Increase the number of observation in the script to `n = 1e4`
     - **Note:** You will have to use `check.attributes = F` to avoid `"names for current but not for target"`
+
+```{r}
+rss = compute_rss_loop(y, y_hat)
+fss = compute_fss_loop(y_hat, y_bar)
+tss = compute_tss_loop(y, y_bar)
+
+rss_vector = function(y, y_hat) {
+return(sum((y - y_hat)^2))
+}
+
+
+fss_vector = function(y_hat, y_bar) {
+  return(sum((y_hat - y_bar)^2))
+}
+
+tss_vector = function(y, y_bar) {
+  return(sum((y - y_bar)^2))
+}
+
+rss_v2 = rss_vector(y, y_hat)
+fss_v2 = fss_vector(y_hat, y_bar)
+tss_v2 = tss_vector(y, y_bar)
+
+all.equal(rss,rss_v2)
+all.equal(fss,fss_v2)
+all.equal(tss,tss_v2)
+
+```
+
+```{r}
+all.equal(rss,rss_v2, tolerance = 1e-3)
+all.equal(fss,fss_v2, tolerance = 1e-3)
+all.equal(tss,tss_v2, tolerance = 1e-3)
+
+all.equal(rss,rss_v2, tolerance = 0)
+all.equal(fss,fss_v2, tolerance = 0)
+all.equal(tss,tss_v2, tolerance = 0)
+```
+
+**Even I changed the tolerance of `all.equal` the results stayed the same, because the two functions (from loops or vector) are identical.**
+
+```{r, cache = T}
+library('rbenchmark')
+out = benchmark(compute_rss_loop(y, y_hat), rss_vector(y, y_hat),
+columns = c("test", "replications", "elapsed", "relative"),
+order="relative", 
+replications=20) 
+```
+
+
 
 
 - Perform the two different types of benchmarking operations using `rbenchmark` and `microbenchmark` as discussed in class. Comment as to whether there is a noticably difference in performance between the functions. Provide a recommendation as to the correct style to use in the future.
