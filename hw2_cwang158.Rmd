@@ -119,20 +119,33 @@ all.equal(tss,tss_v2, tolerance = 0)
 
 **Even I changed the tolerance of `all.equal` the results stayed the same, because the two functions (from loops or vector) are identical.**
 
-```{r, cache = T}
-library('rbenchmark')
-out = benchmark(compute_rss_loop(y, y_hat), rss_vector(y, y_hat),
-columns = c("test", "replications", "elapsed", "relative"),
-order="relative", 
-replications=20) 
-```
-
-
-
-
 - Perform the two different types of benchmarking operations using `rbenchmark` and `microbenchmark` as discussed in class. Comment as to whether there is a noticably difference in performance between the functions. Provide a recommendation as to the correct style to use in the future.
     - Make sure to **cache** the benchmark results in the `Rmd` document!
 
+```{r, cache = T}
+install.packages("rbenchmark")
+```
+
+```{r, cache = T}
+library('rbenchmark')
+out1 = benchmark(compute_rss_loop(y, y_hat), rss_vector(y, y_hat),
+columns = c("test", "replications", "elapsed", "relative"),
+order="relative", 
+replications=20) 
+out1
+```
+
+```{r}
+install.packages("microbenchmark")
+```
+
+```{r, cache= T}
+library('microbenchmark')
+out2 = microbenchmark(compute_rss_loop(y, y_hat), rss_vector(y, y_hat), times = 20)
+summary(out2)
+```
+
+**The `loop` function spends much more time to run, so the `vector` function should be used.**
 
 ## (5 Points) Exercise 2 (Awake in a Nightmare)
 
@@ -174,13 +187,16 @@ z(1.57,i)
 z(-2.33,i,h=F)
 ```
 
-```{r, cache = T, echo = F}
-<<coworker>>
-```
-
 1. First try to figure out what is happening 
     - What distribution does the graph look like?
-    - What kind of calculation is occurring? 
+    *normal distribution*
+    - What kind of calculation is occurring?
+    **`d` gets the length of `x`.**
+    **`s` gets $x^2$.**
+    **`u` gets the mean of `x`.**
+    **`w` gets the unbiased estimator of SD of `x`.**
+    **`n` gets the standardized value of `x`.**
+    **`z` gets the graph**
     - Are there any redundancies in the code? (e.g. redefinition of common functions)
 2. Document each part of the code using comments `# Function does...`
     - Provide clarity behind the parameters of the functions.
@@ -190,7 +206,48 @@ z(-2.33,i,h=F)
     - Use intuitive variable and function names
     - Correct the indentation and split statements up to multiple lines.
     - Implement vectorized or base function.
+**the cleaned codes**
+```{r, cache = T}
+d = function(x){  
+  length(x) 
+}                       # length of x
+
+s = function(x){ 
+  x*x 
+}                       # the square of x
+
+u = function(x, ...){
+  m = 0
+  k = 1
+  while(k <= d(x)){ 
+    m = m + x[k]
+    k = k + 1 
+  } 
+  m/d(x)
+}
+
+w = function(b, v, q = T){
+  n = d(b)
+  o = 0
+  for(i in seq_len(n)){ 
+    o = o + s(b[i]-v) 
+  } 
+  (1/(n-1*(q == T))*o)^(0.5)
+}
+
+n = function(p, i, ...){ m = u(i, ...); r = w(i, m); (p-m)/r}
+
+z = function(p, i, h = T, ...){
+  g = seq(-3,3,length=1000);gg = dnorm(g)
+  plot(g, gg, type="l", lwd=1, ...)
+  k = n(p = p,i = i, ...)
+  if(h) { tt = c(g[g<=k],k,-3); ll = c(gg[g<=k],0,0) }else{ tt = c(k,g[g>=k],3); ll = c(0,gg[g>=k],0) }
+  polygon(tt, ll, col="red")
+}
+```
 4. Make sure the output is the **same** between your version and the cleaned up version.
+
+
     - You may wish to individually test each function using `all.equal(bad_func(),your_func())`.
   
 ## (5 Points) Exercise 3 (Recursion is Recursion is Recursion is ...)
@@ -208,12 +265,48 @@ A common operation within Statistics is to obtain an **average** over data. The 
     - If the vector `x` contains `NA` values, then remove them using `na.omit()`.
     - **Note:** You are *not* permitted to call the base R implementation of `mean()`. However, you should check if the values are equal using `all.equal(x,y)`.
 
+```{r}
+x_bar_loop = function(x) {
+    if (length(na.omit(x)) == 0) {
+    mean1 = NaN  
+  } else {
+    mean1 = 0  
+    for (i in 1: length(na.omit(x))) {
+      mean1 = mean1 + (na.omit(x)[i])/(length(na.omit(x)))
+    }
+  }
+  return(mean1)
+}
+```
+
+```{r}
+x_bar_vector = function(x) {
+  if (length(na.omit(x)) == 0) {
+    mean2 = NaN
+  } else {
+    mean2 = (sum(na.omit(x))/length(na.omit(x)))
+  }
+  return(mean2)
+}
+```
+
 - We can also implement a recursive cummulative average if we modify the definition for ${ {\bar x}_n}$ to depend on itself by ${ {\bar x}_{n-1} }$. 
     - Try to show that $${ {\bar x}_n} = \frac{1}{n}\left[ {\left( {n - 1} \right){ {\bar x}_{n - 1} } + {x_n} } \right]$$.
 
 - Please implement the following recursive formula:
 \[ { {\bar x}_n} = \frac{1}{n}\left[ {\left( {n - 1} \right){ {\bar x}_{n - 1} } + {x_n} } \right]\]
     - Do not worry about returning `NaN` or detecting `NA` values. Focus only on writing the recursion case.
+
+```{r}
+x_bar_recurse = function(x) {
+  n = length(x)
+  if (n == 1) {
+    return(x[1])
+  } else {
+    return((((n-1)*x_bar_recurse(x[-n]) + x[n])/n))
+  }
+}
+```
 
 ## (5 Points) Exercise 4 (Bugs, Bugs Everywhere!)
 
@@ -237,6 +330,16 @@ f = function(x){
 
 f(1)
 ```
+**The function contains object (a) that was not defined before. To fix the bug, we could define `a` first. also we should print the output if we want show it.**
+```{r infunc, eval = FALSE}
+f = function(x){
+  a = x+1 #define `a` here
+  n = a+x
+}
+
+(f(1)) #print
+```
+
 - Huh, I could of sworn the function was working a minute ago. I made sure that the calculation were vectorized. Why doesn't it work!?
 ```{r, eval = FALSE}
 p = function(x){
@@ -247,6 +350,8 @@ vals = seq(0, 1, by = 0.1)
 
 p(vals)
 ```
+**p is a function, 1-p couldn't be calculated. we could `log(p/(1-p)` to `log(p(x)/(1-p(x))`.**
+
 - The mean seems to be broken...
 ```{r, eval = FALSE}
 d = c(1, 3, NA, 5, 6, 9)
@@ -254,6 +359,8 @@ d = c(1, 3, NA, 5, 6, 9)
 mean(d) == 1/length(d)*sum(d)
 
 ```
+**we should use there is a missting value in `d`, we should replace `d` into `na.omit(d)` in the formula. We might also check whether we should use `=` or `==` depending on the object of the formula.**
+
 - If this, then that right? 
 ```{r, eval = FALSE}
 set.seed(145)
@@ -263,11 +370,13 @@ b = sample(1:10, 5)
 
 if(d > b){
   d+5
-} 
+}
 else {
   b*2
 }
 ```
+**Use `ifelse(d > b, d+5, d*2)` instead.**
+
 - What is this blasphemy?! Why am I not getting any successful runs?? 
 ```{r, eval = FALSE}
 set.seed(1234)
@@ -298,8 +407,115 @@ Recall from [Lecture 5](http://stat385.thecoatlessprofessor.com/assets/lectures/
 
 - Create one *internal* and one *external* **memoized** factorial function.
   - Do **not** name it `factorial()`.
+  
+```{r, cache = T}
+install.packages("memoise")
+```
+
+
+```{r}
+fac_r <- function(x){ 
+if(x <= 1){
+return(1)
+} else {
+return(x*fac_r(x-1))
+}
+}
+```
+
+```{r}
+library("memoise")
+ex_mem_fac = memoise(fac_r)
+in_mem_fac = memoise(function(x) {
+  if(x <= 1){
+return(1)
+} else {
+return(x*in_mem_fac(x-1))
+}
+})
+
+fac_basic = function(x) {
+  return(factorial(x))
+}
+```
+
 - Check for equality between the factorial functions using the base R implementation of `factorial()`.
+
+```{r}
+all.equal(ex_mem_fac, in_mem_fac, fac_basic)
+```
+
 - Perform a benchmark on all *four* functions. 
   - Compare the function against the base R and the two memoized versions.
+```{r, cache = T}
+set.seed(1281)
+x = sample(50:100,1)
+```
+
+```{r, cache = T}
+forget(ex_mem_fac)
+forget(in_mem_fac)
+forget(fac_r)
+forget(fac_basic)
+fac_r <- function(x){ 
+if(x <= 1){
+return(1)
+} else {
+return(x*fac_r(x-1))
+}
+}
+system.time({fac_r(x)})
+```
+
+```{r, cache = T}
+forget({fac_r})
+ex_mem_fac = memoise(fac_r)
+system.time({ex_mem_fac(x)})
+system.time({ex_mem_fac(x)})
+(ex_mem_fac(x))
+```
+
+```{r, cache = T}
+forget(ex_mem_fac)
+forget(fac_r)
+in_mem_fac = memoise(function(x) {
+  if(x <= 1){
+return(1)
+} else {
+return(x*in_mem_fac(x-1))
+}
+})
+system.time({in_mem_fac(x)})
+system.time({in_mem_fac(x)})
+(in_mem_fac(x))
+```
+
+```{r, cache = T}
+forget(ex_mem_fac)
+forget(in_mem_fac)
+forget(fac_r)
+fac_basic = function(x) {
+  return(factorial(x))
+}
+system.time({fac_basic(x)})
+system.time({fac_basic(x)})
+(fac_basic(x))
+```
+
 - Use the function with the best *timing* to implement combinations: $$C\left( {n,k} \right) = \frac{ {n!} }{ {k!\left( {n - k} \right)!} }$$
   - Compare the combination function against `choose()` in base R. 
+
+**the external cache is more effective, so we use external cache**
+```{r}
+set.seed(1228)
+n = sample(20:30, 1)
+k = sample(10:20, 1)
+combination = function(n, k) {
+  return((ex_mem_fac(n))/((ex_mem_fac(k))*(ex_mem_fac(n-k))))
+}
+```
+
+```{r, cache = T}
+all.equal(combination(n, k), choose(n,k))
+```
+
