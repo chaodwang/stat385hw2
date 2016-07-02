@@ -1,3 +1,7 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
 > "There are no routine statistical question; only questionable statistical routines." 
 >
 > --- **D.R. Cox** quoted in Chatfield, C. 1991. Avoiding statistical pitfalls. Statistical Science 6: 240-268.
@@ -14,7 +18,7 @@ Keeping in line with our commitment to using versioning control, please:
 3. **Please commit every exercise as you complete them.**
 4. Provide a link to your GitHub repository to be awarded credit.
 
-![]
+![figure1.png]
 
 ## (4 Points) Exercise 1 (It's a Mad, Mad, Mad, Mad Computational World)
 
